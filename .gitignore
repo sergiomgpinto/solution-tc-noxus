@@ -11,6 +11,7 @@ ENV/
 
 # UV
 .venv/
+uv.lock
 
 # IDEs
 .vscode/
@@ -43,3 +44,6 @@ htmlcov/
 coverage.xml
 *.cover
 .pytest_cache/
+
+# DB
+chatbot.db
