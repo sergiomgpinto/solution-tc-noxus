@@ -6,13 +6,15 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from .db.database import db
 from .db.models import Conversation, Message
+from .knowledge.manager import knowledge_manager
 
 load_dotenv()
 
 
 class ChatBot:
-    def __init__(self, conversation_id: Optional[int] = None) -> None:
+    def __init__(self, conversation_id: Optional[int] = None, use_knowledge: bool = True) -> None:
         api_key: Optional[str] = os.getenv("OPENROUTER_API_KEY")
+
         if not api_key:
             print("Error: OPENROUTER_API_KEY not found in .env file")
             sys.exit(1)
@@ -21,12 +23,11 @@ class ChatBot:
             base_url="https://openrouter.ai/api/v1",
             api_key=api_key,
         )
-
         self.model: str = "qwen/qwen-2.5-72b-instruct"
         self.messages: List[Dict[str, str]] = []
         self.conversation_id: Optional[int] = conversation_id
         self.session: Optional[Session] = None
-
+        self.use_knowledge: bool = use_knowledge
         self._initialize_conversation()
 
     def _initialize_conversation(self) -> None:
@@ -73,6 +74,24 @@ class ChatBot:
         print("Type 'quit' or 'exit' to end the conversation.\n")
 
     def chat(self, user_input: str) -> str:
+
+        if self.use_knowledge:
+            results = knowledge_manager.search(user_input, n_results=2)
+            print(results)
+            if results:
+                context = "\n\n".join([doc for doc, _, _ in results])
+
+                # Add context as a system message temporarily
+                context_message = {
+                    "role": "system",
+                    "content": f"Relevant information:\n{context}"
+                }
+                messages_with_context = self.messages + [context_message]
+            else:
+                messages_with_context = self.messages
+        else:
+            messages_with_context = self.messages
+
         user_message = Message(
             conversation_id=self.conversation_id,
             role="user",
@@ -89,7 +108,7 @@ class ChatBot:
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
-                messages=self.messages,
+                messages=messages_with_context + [{"role": "user", "content": user_input}],
                 max_tokens=500,
                 temperature=0.5,
             )
