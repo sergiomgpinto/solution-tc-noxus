@@ -5,6 +5,7 @@ from ..main import ChatBot
 from ..db.database import db
 from ..db.models import Conversation, Message, Feedback
 from ..knowledge.manager import knowledge_manager
+from ..feedback_analytics import feedback_analytics
 from .models import (
     ChatRequest, ChatResponse, FeedbackRequest, FeedbackResponse,
     ConversationSummary, KnowledgeSourceRequest, KnowledgeSourceResponse,
@@ -166,3 +167,30 @@ async def search_knowledge(request: SearchRequest) -> List[SearchResult]:
         )
         for doc, score, metadata in results
     ]
+
+
+@router.get("/feedback/summary")
+async def get_feedback_summary(
+    days: int = 7,
+    session: Session = Depends(get_db)
+) -> dict:
+    return feedback_analytics.get_feedback_summary(session, days)
+
+
+@router.get("/feedback/conversation/{conversation_id}")
+async def get_conversation_feedback(
+    conversation_id: int,
+    session: Session = Depends(get_db)
+) -> List[dict]:
+    feedback = feedback_analytics.get_conversation_feedback(conversation_id, session)
+    if not feedback:
+        raise HTTPException(status_code=404, detail="No feedback found for this conversation")
+    return feedback
+
+
+@router.get("/feedback/worst-performing")
+async def get_worst_performing_messages(
+    limit: int = 10,
+    session: Session = Depends(get_db)
+) -> List[dict]:
+    return feedback_analytics.get_worst_performing_messages(limit, session)
