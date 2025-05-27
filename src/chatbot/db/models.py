@@ -18,7 +18,6 @@ class Conversation(Base):
     __tablename__ = "conversations"
 
     title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-
     messages: Mapped[list["Message"]] = relationship(
         back_populates="conversation",
         cascade="all, delete-orphan"
@@ -33,8 +32,11 @@ class Message(Base):
     )
     role: Mapped[str] = mapped_column(String(50))
     content: Mapped[str] = mapped_column(Text)
-
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")
+    feedbacks: Mapped[list["Feedback"]] = relationship(
+        back_populates="message",
+        cascade="all, delete-orphan"
+    )
 
 
 class KnowledgeSource(Base):
@@ -45,3 +47,13 @@ class KnowledgeSource(Base):
     collection_name: Mapped[str] = mapped_column(String(255), unique=True)
     document_count: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(default=True)
+
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    message_id: Mapped[int] = mapped_column(
+        ForeignKey("messages.id", ondelete="CASCADE")
+    )
+    feedback_type: Mapped[str] = mapped_column(String(50))
+    message: Mapped["Message"] = relationship(back_populates="feedbacks")
