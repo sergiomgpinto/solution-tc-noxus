@@ -56,7 +56,7 @@ class Feedback(Base):
         ForeignKey("messages.id", ondelete="CASCADE")
     )
     feedback_type: Mapped[str] = mapped_column(String(50))
-    value: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # value: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     message: Mapped["Message"] = relationship(back_populates="feedbacks")
 
 
