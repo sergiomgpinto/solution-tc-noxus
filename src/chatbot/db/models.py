@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Optional
-from sqlalchemy import String, Text, DateTime, ForeignKey, Integer
+from typing import Optional, List
+from sqlalchemy import String, Text, DateTime, ForeignKey, Integer, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -58,3 +58,22 @@ class Feedback(Base):
     feedback_type: Mapped[str] = mapped_column(String(50))
     value: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     message: Mapped["Message"] = relationship(back_populates="feedbacks")
+
+
+class Configuration(Base):
+    __tablename__ = "configurations"
+
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    config_json: Mapped[dict] = mapped_column(JSON)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    is_active: Mapped[bool] = mapped_column(default=False)
+    tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    @property
+    def tag_list(self) -> List[str]:
+        return self.tags.split(",") if self.tags else []
+
+    @tag_list.setter
+    def tag_list(self, tags: List[str]) -> None:
+        self.tags = ",".join(tags) if tags else None

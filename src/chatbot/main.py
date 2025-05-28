@@ -7,14 +7,14 @@ from sqlalchemy.orm import Session
 from .db.database import db
 from .db.models import Conversation, Message
 from .knowledge.manager import knowledge_manager
+from .config_manager import config_manager
 
 load_dotenv()
 
 
 class ChatBot:
-    def __init__(self, conversation_id: Optional[int] = None, use_knowledge: bool = True) -> None:
+    def __init__(self, conversation_id: Optional[int] = None) -> None:
         api_key: Optional[str] = os.getenv("OPENROUTER_API_KEY")
-
         if not api_key:
             print("Error: OPENROUTER_API_KEY not found in .env file")
             sys.exit(1)
@@ -23,11 +23,12 @@ class ChatBot:
             base_url="https://openrouter.ai/api/v1",
             api_key=api_key,
         )
-        self.model: str = "qwen/qwen-2.5-72b-instruct"
+        self.config = config_manager.get_active_configuration()
+        self.model: str = self.config.model
         self.messages: List[Dict[str, str]] = []
         self.conversation_id: Optional[int] = conversation_id
         self.session: Optional[Session] = None
-        self.use_knowledge: bool = use_knowledge
+
         self._initialize_conversation()
 
     def _initialize_conversation(self) -> None:
@@ -56,10 +57,11 @@ class ChatBot:
             self.session.commit()
             self.conversation_id = conversation.id
 
+            # Use system prompt from configuration
             system_message = Message(
                 conversation_id=self.conversation_id,
                 role="system",
-                content="You are a helpful assistant. Keep your responses concise and clear."
+                content=self.config.prompt_template.system_prompt
             )
             self.session.add(system_message)
             self.session.commit()
@@ -70,28 +72,12 @@ class ChatBot:
             })
 
             print(f"Started new conversation {self.conversation_id}")
+            print(f"Using configuration: {self.config.name}")
 
         print("Type 'quit' or 'exit' to end the conversation.\n")
 
     def chat(self, user_input: str) -> str:
-
-        if self.use_knowledge:
-            results = knowledge_manager.search(user_input, n_results=2)
-            print(results)
-            if results:
-                context = "\n\n".join([doc for doc, _, _ in results])
-
-                # Add context as a system message temporarily
-                context_message = {
-                    "role": "system",
-                    "content": f"Relevant information:\n{context}"
-                }
-                messages_with_context = self.messages + [context_message]
-            else:
-                messages_with_context = self.messages
-        else:
-            messages_with_context = self.messages
-
+        # Save user message to database
         user_message = Message(
             conversation_id=self.conversation_id,
             role="user",
@@ -100,21 +86,59 @@ class ChatBot:
         self.session.add(user_message)
         self.session.commit()
 
+        # Add to messages history
         self.messages.append({
             "role": "user",
             "content": user_input
         })
 
         try:
+            # Prepare messages for API call
+            messages_for_api = self.messages.copy()
+
+            # Use knowledge retrieval if enabled in configuration
+            if self.config.knowledge_settings.enabled:
+                results = knowledge_manager.search(
+                    query=user_input,
+                    knowledge_source_ids=self.config.knowledge_settings.knowledge_source_ids,
+                    n_results=self.config.knowledge_settings.max_results
+                )
+
+                if results:
+                    # Filter results by score threshold
+                    relevant_docs = []
+                    for doc, score, metadata in results:
+                        if score <= self.config.knowledge_settings.score_threshold:
+                            relevant_docs.append(doc)
+
+                    # Add context if we found relevant documents
+                    if relevant_docs:
+                        context = "\n\n".join(relevant_docs)
+                        context_message = {
+                            "role": "system",
+                            "content": self.config.prompt_template.context_template.format(
+                                context=context
+                            )
+                        }
+                        messages_for_api.append(context_message)
+
+            # Add the current user message
+            messages_for_api.append({"role": "user", "content": user_input})
+
+            # Make API call with configuration parameters
             response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages_with_context + [{"role": "user", "content": user_input}],
-                max_tokens=500,
-                temperature=0.5,
+                model=self.config.model,
+                messages=messages_for_api,
+                temperature=self.config.model_parameters.temperature,
+                max_tokens=self.config.model_parameters.max_tokens,
+                top_p=self.config.model_parameters.top_p,
+                frequency_penalty=self.config.model_parameters.frequency_penalty,
+                presence_penalty=self.config.model_parameters.presence_penalty
             )
 
             bot_response: str = response.choices[0].message.content
 
+            # Save assistant message to database
             assistant_message = Message(
                 conversation_id=self.conversation_id,
                 role="assistant",
@@ -123,11 +147,13 @@ class ChatBot:
             self.session.add(assistant_message)
             self.session.commit()
 
+            # Add to messages history
             self.messages.append({
                 "role": "assistant",
                 "content": bot_response
             })
 
+            # Update conversation title if it's the first exchange
             conversation = self.session.query(Conversation).filter_by(
                 id=self.conversation_id
             ).first()
@@ -140,7 +166,12 @@ class ChatBot:
         except Exception as e:
             error_msg: str = f"Error: {str(e)}"
             print(f"\n{error_msg}")
-            return "I'm sorry, I encountered an error. Please try again."
+
+            # Use error prompt from configuration if available
+            if hasattr(self.config.prompt_template, 'error_prompt') and self.config.prompt_template.error_prompt:
+                return self.config.prompt_template.error_prompt
+            else:
+                return "I'm sorry, I encountered an error. Please try again."
 
     def run(self) -> None:
         print("ChatBot: Hi, how are you?")

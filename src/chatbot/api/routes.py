@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from ..main import ChatBot
@@ -6,11 +6,14 @@ from ..db.database import db
 from ..db.models import Conversation, Message, Feedback
 from ..knowledge.manager import knowledge_manager
 from ..feedback_analytics import feedback_analytics
+from ..config_manager import config_manager
+from ..config_schemas import ChatbotConfiguration
 from .models import (
     ChatRequest, ChatResponse, FeedbackRequest, FeedbackResponse,
     ConversationSummary, KnowledgeSourceRequest, KnowledgeSourceResponse,
     AddDocumentsRequest, SearchRequest, SearchResult
 )
+
 
 router = APIRouter()
 
@@ -194,3 +197,60 @@ async def get_worst_performing_messages(
     session: Session = Depends(get_db)
 ) -> List[dict]:
     return feedback_analytics.get_worst_performing_messages(limit, session)
+
+@router.post("/configurations", response_model=dict)
+async def create_configuration(
+    config: ChatbotConfiguration,
+    activate: bool = False
+) -> dict:
+    try:
+        return config_manager.create_configuration(config, activate)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/configurations", response_model=List[dict])
+async def list_configurations(
+    tags: Optional[str] = None,
+    active_only: bool = False
+) -> List[dict]:
+    tag_list = tags.split(",") if tags else None
+    return config_manager.list_configurations(tag_list, active_only)
+
+
+@router.get("/configurations/{config_id}", response_model=dict)
+async def get_configuration(config_id: int) -> dict:
+    config = config_manager.get_configuration(config_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    return config
+
+
+@router.put("/configurations/{config_id}", response_model=dict)
+async def update_configuration(
+    config_id: int,
+    config: ChatbotConfiguration
+) -> dict:
+    try:
+        return config_manager.update_configuration(config_id, config)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/configurations/{config_id}/activate", response_model=dict)
+async def activate_configuration(config_id: int) -> dict:
+    try:
+        return config_manager.activate_configuration(config_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/configurations/{config_id}")
+async def delete_configuration(config_id: int) -> dict:
+    try:
+        if config_manager.delete_configuration(config_id):
+            return {"status": "deleted"}
+        else:
+            raise HTTPException(status_code=404, detail="Configuration not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
