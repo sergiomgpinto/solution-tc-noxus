@@ -1,4 +1,4 @@
-from db.database import db
+from chatbot.db.database import db
 
 
 def init_database() -> None:

@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: chatbot-db-dev
+    environment:
+      POSTGRES_USER: chatbot
+      POSTGRES_PASSWORD: chatbot_password
+      POSTGRES_DB: chatbot
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: .
+    container_name: chatbot-backend-dev
+    environment:
+      DATABASE_URL: postgresql://chatbot:chatbot_password@postgres:5432/chatbot
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      CHROMA_PERSIST_DIR: /app/chroma_data
+    volumes:
+      - ./src:/app/src  # Mount source for hot reload
+      - chroma_data_dev:/app/chroma_data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    command: python -m chatbot.run_server
+
+  frontend:
+    image: node:18-alpine
+    container_name: chatbot-frontend-dev
+    working_dir: /app
+    volumes:
+      - ./frontend-react:/app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    command: sh -c "npm install && npm run dev -- --host"
+
+volumes:
+  postgres_data_dev:
+  chroma_data_dev:

@@ -3,7 +3,7 @@ from typing import Optional, Generator
 from sqlalchemy import create_engine, Engine
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
-from .models import Base
+from chatbot.db.models import Base
 
 load_dotenv()
 

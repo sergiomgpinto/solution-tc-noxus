@@ -1,6 +1,6 @@
 import sys
-from .knowledge.manager import knowledge_manager
-from .db.database import db
+from chatbot.knowledge.manager import knowledge_manager
+from chatbot.db.database import db
 
 
 def create_source(name: str, description: str = "") -> None:

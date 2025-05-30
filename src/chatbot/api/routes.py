@@ -1,14 +1,14 @@
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from ..main import ChatBot
-from ..db.database import db
-from ..db.models import Conversation, Message, Feedback
-from ..knowledge.manager import knowledge_manager
-from ..feedback_analytics import feedback_analytics
-from ..config_manager import config_manager
-from ..config_schemas import ChatbotConfiguration
-from .models import (
+from chatbot.main import ChatBot
+from chatbot.db.database import db
+from chatbot.db.models import Conversation, Message, Feedback
+from chatbot.knowledge.manager import knowledge_manager
+from chatbot.feedback_analytics import feedback_analytics
+from chatbot.config_manager import config_manager
+from chatbot.config_schemas import ChatbotConfiguration
+from chatbot.api.models import (
     ChatRequest, ChatResponse, FeedbackRequest, FeedbackResponse,
     ConversationSummary, KnowledgeSourceRequest, KnowledgeSourceResponse,
     AddDocumentsRequest, SearchRequest, SearchResult

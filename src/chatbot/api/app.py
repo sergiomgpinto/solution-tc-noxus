@@ -1,8 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from ..db.database import db
-from .routes import router
+from chatbot.db.database import db
+from chatbot.api.routes import router
 
 
 @asynccontextmanager

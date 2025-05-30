@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: chatbot-db
+    environment:
+      POSTGRES_USER: chatbot
+      POSTGRES_PASSWORD: chatbot_password
+      POSTGRES_DB: chatbot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatbot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: chatbot-backend
+    environment:
+      DATABASE_URL: postgresql://chatbot:chatbot_password@postgres:5432/chatbot
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      CHROMA_PERSIST_DIR: /app/chroma_data
+      PYTHONPATH: /app/src
+      PORT: 8000
+      HOST: 0.0.0.0
+      ENV: production
+    volumes:
+      - ./src:/app/src
+      - chroma_data:/app/chroma_data
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        python -m chatbot.init_db &&
+        python -m chatbot.config_cli init &&
+        python -m chatbot.run_server
+      "
+
+  frontend:
+    build: ./frontend
+    container_name: chatbot-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    environment:
+      - NODE_ENV=production
+
+volumes:
+  postgres_data:
+  chroma_data:

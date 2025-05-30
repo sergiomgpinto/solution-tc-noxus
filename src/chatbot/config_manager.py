@@ -1,9 +1,9 @@
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
-from .db.database import db
-from .db.models import Configuration
-from .config_schemas import ChatbotConfiguration
+from chatbot.db.database import db
+from chatbot.db.models import Configuration
+from chatbot.config_schemas import ChatbotConfiguration
 
 
 class ConfigurationManager:

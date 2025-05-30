@@ -4,10 +4,10 @@ from typing import List, Dict, Optional
 from openai import OpenAI
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from .db.database import db
-from .db.models import Conversation, Message
-from .knowledge.manager import knowledge_manager
-from .config_manager import config_manager
+from chatbot.db.database import db
+from chatbot.db.models import Conversation, Message
+from chatbot.knowledge.manager import knowledge_manager
+from chatbot.config_manager import config_manager
 
 load_dotenv()
 

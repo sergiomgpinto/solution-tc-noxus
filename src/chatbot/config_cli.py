@@ -1,7 +1,7 @@
 import sys
 import json
-from .config_manager import config_manager
-from .config_schemas import ChatbotConfiguration
+from chatbot.config_manager import config_manager
+from chatbot.config_schemas import ChatbotConfiguration
 
 
 def create_default_configs() -> None:

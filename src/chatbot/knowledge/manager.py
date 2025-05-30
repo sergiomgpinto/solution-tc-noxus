@@ -4,8 +4,8 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from chromadb.config import Settings
 from sqlalchemy.orm import Session
-from ..db.database import db
-from ..db.models import KnowledgeSource
+from chatbot.db.database import db
+from chatbot.db.models import KnowledgeSource
 
 
 class KnowledgeManager:

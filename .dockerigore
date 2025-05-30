@@ -1,0 +1,25 @@
+# .dockerignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+venv/
+.venv/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+.DS_Store
+*.log
+.git
+.gitignore
+README.md
+tests/
+*.db
+*.sqlite3
+chroma_db/
+node_modules/
+dist/
+build/

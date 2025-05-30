@@ -2,8 +2,8 @@ from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_
 from sqlalchemy.orm import Session
-from .db.database import db
-from .db.models import Feedback, Message
+from chatbot.db.database import db
+from chatbot.db.models import Feedback, Message
 
 
 class FeedbackAnalytics:

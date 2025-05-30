@@ -1,5 +1,5 @@
 import sys
-from .feedback_analytics import feedback_analytics
+from chatbot.feedback_analytics import feedback_analytics
 
 
 def show_summary(days: int = 7) -> None:
