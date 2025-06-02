@@ -169,5 +169,60 @@ class KnowledgeManager:
 
         return result
 
+    def update_knowledge_source(
+            self,
+            knowledge_source_id: int,
+            name: Optional[str] = None,
+            description: Optional[str] = None,
+            is_active: Optional[bool] = None
+    ) -> Dict[str, any]:
+        session_gen = db.get_session()
+        session: Session = next(session_gen)
+
+        try:
+            ks = session.query(KnowledgeSource).filter_by(id=knowledge_source_id).first()
+
+            if not ks:
+                raise ValueError(f"Knowledge source {knowledge_source_id} not found")
+
+            if name:
+                ks.name = name
+            if description is not None:
+                ks.description = description
+            if is_active is not None:
+                ks.is_active = is_active
+
+            session.commit()
+
+            return {
+                "id": ks.id,
+                "name": ks.name,
+                "description": ks.description,
+                "is_active": ks.is_active
+            }
+        finally:
+            session.close()
+
+    def delete_knowledge_source(self, knowledge_source_id: int) -> bool:
+        session_gen = db.get_session()
+        session: Session = next(session_gen)
+
+        try:
+            ks = session.query(KnowledgeSource).filter_by(id=knowledge_source_id).first()
+
+            if not ks:
+                return False
+
+            try:
+                self.client.delete_collection(ks.collection_name)
+            except:
+                raise ValueError(f"Error deleting knowledge source {knowledge_source_id}")
+
+            session.delete(ks)
+            session.commit()
+            return True
+        finally:
+            session.close()
+
 
 knowledge_manager = KnowledgeManager()

@@ -92,6 +92,22 @@ async def get_conversation_messages(
     ]
 
 
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+        conversation_id: int,
+        session: Session = Depends(get_db)
+) -> dict:
+    conversation = session.query(Conversation).filter_by(id=conversation_id).first()
+
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    session.delete(conversation)
+    session.commit()
+
+    return {"status": "deleted", "conversation_id": conversation_id}
+
+
 @router.post("/feedback", response_model=FeedbackResponse)
 async def submit_feedback(
         request: FeedbackRequest,
@@ -172,6 +188,29 @@ async def search_knowledge(request: SearchRequest) -> List[SearchResult]:
     ]
 
 
+@router.put("/knowledge-sources/{source_id}")
+async def update_knowledge_source(
+    source_id: int,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    is_active: Optional[bool] = None
+) -> dict:
+    try:
+        return knowledge_manager.update_knowledge_source(
+            source_id, name, description, is_active
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/knowledge-sources/{source_id}")
+async def delete_knowledge_source(source_id: int) -> dict:
+    if knowledge_manager.delete_knowledge_source(source_id):
+        return {"status": "deleted"}
+    else:
+        raise HTTPException(status_code=404, detail="Knowledge source not found")
+
+
 @router.get("/feedback/summary")
 async def get_feedback_summary(
     days: int = 7,
@@ -197,6 +236,7 @@ async def get_worst_performing_messages(
     session: Session = Depends(get_db)
 ) -> List[dict]:
     return feedback_analytics.get_worst_performing_messages(limit, session)
+
 
 @router.post("/configurations", response_model=dict)
 async def create_configuration(
