@@ -1,33 +1,35 @@
 import pytest
-import time
-import requests
+import uuid
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from fastapi.testclient import TestClient
+from src.chatbot.db.models import Base
+from src.chatbot.api.app import app
 
 
-def pytest_configure(config):
-    """Configure pytest with custom markers"""
-    config.addinivalue_line(
-        "markers", "integration: mark test as integration test"
-    )
-    config.addinivalue_line(
-        "markers", "unit: mark test as unit test"
-    )
+@pytest.fixture
+def unique_id():
+    """Generate unique ID for test data"""
+    return str(uuid.uuid4())[:8]
 
 
-@pytest.fixture(scope="session", autouse=True)
-def wait_for_api():
-    """Wait for API to be ready before running tests"""
-    max_retries = 30
-    retry_interval = 1
+pytest.current_test_id = str(uuid.uuid4())[:8]
 
-    for i in range(max_retries):
-        try:
-            response = requests.get("http://localhost:8000/health")
-            if response.status_code == 200:
-                return
-        except requests.exceptions.ConnectionError:
-            pass
 
-        if i < max_retries - 1:
-            time.sleep(retry_interval)
+@pytest.fixture(scope="function")
+def test_db():
+    """Create a test database for each test function"""
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(bind=engine)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    pytest.fail("API did not become ready in time")
+    yield SessionLocal()
+
+    Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(scope="function")
+def client():
+    """Create a test client for API testing"""
+    with TestClient(app) as test_client:
+        yield test_client

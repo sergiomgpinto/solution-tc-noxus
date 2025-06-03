@@ -113,6 +113,11 @@ async def submit_feedback(
         request: FeedbackRequest,
         session: Session = Depends(get_db)
 ) -> FeedbackResponse:
+
+    message = session.query(Message).filter_by(id=request.message_id).first()
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+
     feedback = Feedback(
         message_id=request.message_id,
         feedback_type=request.feedback_type
@@ -246,6 +251,7 @@ async def create_configuration(
     try:
         return config_manager.create_configuration(config, activate)
     except ValueError as e:
+        print(f'ERRORRRRRR: {str(e)}')
         raise HTTPException(status_code=400, detail=str(e))
 
 
