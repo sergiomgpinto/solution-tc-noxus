@@ -77,3 +77,32 @@ class Configuration(Base):
     @tag_list.setter
     def tag_list(self, tags: List[str]) -> None:
         self.tags = ",".join(tags) if tags else None
+
+
+class ABTest(Base):
+    __tablename__ = "ab_tests"
+
+    name: Mapped[str] = mapped_column(String(255), unique=True)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    control_config_id: Mapped[int] = mapped_column(ForeignKey("configurations.id"))
+    treatment_config_id: Mapped[int] = mapped_column(ForeignKey("configurations.id"))
+    traffic_percentage: Mapped[int] = mapped_column(Integer, default=50)  # % to treatment
+    is_active: Mapped[bool] = mapped_column(default=True)
+
+    # Relationships
+    control_config: Mapped["Configuration"] = relationship(foreign_keys=[control_config_id])
+    treatment_config: Mapped["Configuration"] = relationship(foreign_keys=[treatment_config_id])
+    assignments: Mapped[List["ABTestAssignment"]] = relationship(
+        back_populates="test",
+        cascade="all, delete-orphan"
+    )
+
+
+class ABTestAssignment(Base):
+    __tablename__ = "ab_test_assignments"
+
+    user_identifier: Mapped[str] = mapped_column(String(255))  # Could be session_id or user_id
+    test_id: Mapped[int] = mapped_column(ForeignKey("ab_tests.id"))
+    variant: Mapped[str] = mapped_column(String(50))  # 'control' or 'treatment'
+
+    test: Mapped["ABTest"] = relationship(back_populates="assignments")

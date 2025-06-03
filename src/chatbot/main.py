@@ -8,12 +8,13 @@ from chatbot.db.database import db
 from chatbot.db.models import Conversation, Message
 from chatbot.knowledge.manager import knowledge_manager
 from chatbot.config_manager import config_manager
+from chatbot.ab_test_manager import ab_test_manager
 
 load_dotenv()
 
 
 class ChatBot:
-    def __init__(self, conversation_id: Optional[int] = None) -> None:
+    def __init__(self, conversation_id: Optional[int] = None, user_identifier: Optional[str] = None) -> None:
         api_key: Optional[str] = os.getenv("OPENROUTER_API_KEY")
         if not api_key:
             print("Error: OPENROUTER_API_KEY not found in .env file")
@@ -23,6 +24,10 @@ class ChatBot:
             base_url="https://openrouter.ai/api/v1",
             api_key=api_key,
         )
+        if user_identifier:
+            self.config = ab_test_manager.get_config_for_user(user_identifier)
+        else:
+            self.config = config_manager.get_active_configuration()
         self.config = config_manager.get_active_configuration()
         self.model: str = self.config.model
         self.messages: List[Dict[str, str]] = []

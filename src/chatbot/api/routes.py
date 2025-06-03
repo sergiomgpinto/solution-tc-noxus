@@ -7,13 +7,13 @@ from chatbot.db.models import Conversation, Message, Feedback
 from chatbot.knowledge.manager import knowledge_manager
 from chatbot.feedback_analytics import feedback_analytics
 from chatbot.config_manager import config_manager
+from chatbot.ab_test_manager import ab_test_manager
 from chatbot.config_schemas import ChatbotConfiguration
 from chatbot.api.models import (
     ChatRequest, ChatResponse, FeedbackRequest, FeedbackResponse,
     ConversationSummary, KnowledgeSourceRequest, KnowledgeSourceResponse,
     AddDocumentsRequest, SearchRequest, SearchResult
 )
-
 
 router = APIRouter()
 
@@ -113,7 +113,6 @@ async def submit_feedback(
         request: FeedbackRequest,
         session: Session = Depends(get_db)
 ) -> FeedbackResponse:
-
     message = session.query(Message).filter_by(id=request.message_id).first()
     if not message:
         raise HTTPException(status_code=404, detail="Message not found")
@@ -195,10 +194,10 @@ async def search_knowledge(request: SearchRequest) -> List[SearchResult]:
 
 @router.put("/knowledge-sources/{source_id}")
 async def update_knowledge_source(
-    source_id: int,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    is_active: Optional[bool] = None
+        source_id: int,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        is_active: Optional[bool] = None
 ) -> dict:
     try:
         return knowledge_manager.update_knowledge_source(
@@ -218,16 +217,16 @@ async def delete_knowledge_source(source_id: int) -> dict:
 
 @router.get("/feedback/summary")
 async def get_feedback_summary(
-    days: int = 7,
-    session: Session = Depends(get_db)
+        days: int = 7,
+        session: Session = Depends(get_db)
 ) -> dict:
     return feedback_analytics.get_feedback_summary(session, days)
 
 
 @router.get("/feedback/conversation/{conversation_id}")
 async def get_conversation_feedback(
-    conversation_id: int,
-    session: Session = Depends(get_db)
+        conversation_id: int,
+        session: Session = Depends(get_db)
 ) -> List[dict]:
     feedback = feedback_analytics.get_conversation_feedback(conversation_id, session)
     if not feedback:
@@ -237,16 +236,16 @@ async def get_conversation_feedback(
 
 @router.get("/feedback/worst-performing")
 async def get_worst_performing_messages(
-    limit: int = 10,
-    session: Session = Depends(get_db)
+        limit: int = 10,
+        session: Session = Depends(get_db)
 ) -> List[dict]:
     return feedback_analytics.get_worst_performing_messages(limit, session)
 
 
 @router.post("/configurations", response_model=dict)
 async def create_configuration(
-    config: ChatbotConfiguration,
-    activate: bool = False
+        config: ChatbotConfiguration,
+        activate: bool = False
 ) -> dict:
     try:
         return config_manager.create_configuration(config, activate)
@@ -257,8 +256,8 @@ async def create_configuration(
 
 @router.get("/configurations", response_model=List[dict])
 async def list_configurations(
-    tags: Optional[str] = None,
-    active_only: bool = False
+        tags: Optional[str] = None,
+        active_only: bool = False
 ) -> List[dict]:
     tag_list = tags.split(",") if tags else None
     return config_manager.list_configurations(tag_list, active_only)
@@ -274,8 +273,8 @@ async def get_configuration(config_id: int) -> dict:
 
 @router.put("/configurations/{config_id}", response_model=dict)
 async def update_configuration(
-    config_id: int,
-    config: ChatbotConfiguration
+        config_id: int,
+        config: ChatbotConfiguration
 ) -> dict:
     try:
         return config_manager.update_configuration(config_id, config)
@@ -300,3 +299,34 @@ async def delete_configuration(config_id: int) -> dict:
             raise HTTPException(status_code=404, detail="Configuration not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/ab-tests")
+async def create_ab_test(
+        name: str,
+        control_config_id: int,
+        treatment_config_id: int,
+        traffic_percentage: int = 50,
+        description: Optional[str] = None
+) -> dict:
+    try:
+        return ab_test_manager.create_ab_test(
+            name, control_config_id, treatment_config_id,
+            traffic_percentage, description
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/ab-tests/{test_id}/results")
+async def get_ab_test_results(test_id: int) -> dict:
+    results = ab_test_manager.get_test_results(test_id)
+    if not results:
+        raise HTTPException(status_code=404, detail="Test not found")
+
+    return {
+        "test_id": test_id,
+        "results": results,
+        "winner": "treatment" if results.get("treatment", {}).get("satisfaction_rate", 0) >
+                                 results.get("control", {}).get("satisfaction_rate", 0) else "control"
+    }
