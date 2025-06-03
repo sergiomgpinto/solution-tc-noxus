@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, and_
 from sqlalchemy.orm import Session
 from chatbot.db.database import db
@@ -20,7 +20,7 @@ class FeedbackAnalytics:
             should_close = False
 
         try:
-            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
             total_feedback = session.query(func.count(Feedback.id)).filter(
                 Feedback.created_at >= cutoff_date
@@ -48,7 +48,7 @@ class FeedbackAnalytics:
                 "thumbs_up": thumbs_up,
                 "thumbs_down": thumbs_down,
                 "satisfaction_rate": round(satisfaction_rate, 2),
-                "as_of": datetime.utcnow().isoformat()
+                "as_of": datetime.now(timezone.utc).isoformat()
             }
         finally:
             if should_close:
